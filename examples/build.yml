@@ -1,0 +1,44 @@
+# À copier dans <projet>/.github/workflows/build.yml et à remplir : c'est la CI
+# propre au projet, appelée par release.yml une fois le tag décodé.
+#
+# Contrat :
+#   - elle reçoit les inputs ci-dessous (n'en déclarer que ceux utilisés, et
+#     retirer les lignes correspondantes du `with:` de release.yml) ;
+#   - chaque fichier à joindre à la release est uploadé dans un artifact dont
+#     le nom commence par "release-" (release-linux, release-windows, ...).
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      tag:          # v1.2.0_beta
+        type: string
+        required: true
+      version:      # 1.2.0
+        type: string
+        required: true
+      channel:      # beta | rc | release
+        type: string
+        required: true
+      debversion:   # 1.2.0~beta
+        type: string
+        required: true
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build
+        run: |
+          mkdir -p dist
+          echo "Construire ici le projet en version $VERSION" > "dist/mon-projet-$VERSION.txt"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-linux
+          path: dist/*
+          if-no-files-found: error

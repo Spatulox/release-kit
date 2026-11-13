@@ -1,0 +1,104 @@
+name: release-kit / publish
+
+# Rassemble les artifacts produits par la CI de build du projet, extrait les
+# notes de version du CHANGELOG et crée la release GitHub du tag.
+# Rejouable : si la release existe déjà, ses notes et ses fichiers sont mis à jour.
+#
+# L'appelant doit accorder `permissions: contents: write`.
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Tag de la release (needs.<job tag>.outputs.tag).
+        type: string
+        required: true
+      prerelease:
+        description: Publier en pré-release (pas marquée "latest").
+        type: boolean
+        required: true
+      title:
+        description: Titre de la release. Par défaut "<nom du repo> <tag>".
+        type: string
+        default: ""
+      artifact-pattern:
+        description: Artifacts à joindre à la release (glob sur leur nom).
+        type: string
+        default: release-*
+      changelog:
+        description: Chemin du CHANGELOG dans le repo.
+        type: string
+        default: CHANGELOG.md
+      require-changelog:
+        description: Échouer si le CHANGELOG n'a pas de section pour ce tag (sinon simple warning).
+        type: boolean
+        default: false
+      kit-ref:
+        description: Version de release-kit dont on utilise les scripts.
+        type: string
+        default: v1
+
+jobs:
+  release:
+    name: Release GitHub
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag }}
+      PRERELEASE: ${{ inputs.prerelease }}
+      TITLE: ${{ inputs.title || format('{0} {1}', github.event.repository.name, inputs.tag) }}
+      CHANGELOG: ${{ inputs.changelog }}
+      REQUIRE_CHANGELOG: ${{ inputs.require-changelog }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Spatulox/release-kit
+          ref: ${{ inputs.kit-ref }}
+          path: .release-kit
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: ${{ inputs.artifact-pattern }}
+          path: dist
+          merge-multiple: true
+
+      - name: Fichiers à publier
+        env:
+          PATTERN: ${{ inputs.artifact-pattern }}
+        run: |
+          if [ -z "$(ls -A dist 2>/dev/null)" ]; then
+            echo "::error::Aucun fichier dans les artifacts '$PATTERN' : la CI de build doit les uploader sous ce nom"
+            exit 1
+          fi
+          ls -l dist
+
+      - name: Notes depuis ${{ inputs.changelog }}
+        run: |
+          if ! bash .release-kit/scripts/changelog.sh "$TAG" "$CHANGELOG" > notes.md || [ ! -s notes.md ]; then
+            if [ "$REQUIRE_CHANGELOG" = true ]; then
+              echo "::error::Pas de section '## $TAG' dans $CHANGELOG"
+              exit 1
+            fi
+            echo "::warning::Pas de section '## $TAG' dans $CHANGELOG"
+            echo "Pas de notes de version pour $TAG." > notes.md
+          fi
+          cat notes.md
+
+      - name: Release GitHub
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            # Relance du workflow : met à jour la release existante
+            gh release edit "$TAG" --title "$TITLE" --notes-file notes.md --prerelease="$PRERELEASE"
+            gh release upload "$TAG" dist/* --clobber
+          else
+            flags=(--title "$TITLE" --notes-file notes.md --verify-tag)
+            if [ "$PRERELEASE" = true ]; then
+              flags+=(--prerelease --latest=false)
+            else
+              flags+=(--latest)
+            fi
+            gh release create "$TAG" "${flags[@]}" dist/*
+          fi
+          echo "### :rocket: [$TITLE]($(gh release view "$TAG" --json url -q .url))" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,67 @@
+name: release-kit / tag
+
+# Décode le tag poussé (vX.Y.Z_beta, vX.Y.Z_rc, vX.Y.Z_release ou vX.Y.Z) et
+# l'expose aux jobs suivants. Un tag invalide fait échouer la release ici,
+# avant tout build.
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Tag à décoder. Par défaut, le tag qui a déclenché le run.
+        type: string
+        default: ""
+      kit-ref:
+        description: Version de release-kit dont on utilise les scripts.
+        type: string
+        default: v1
+    outputs:
+      tag:
+        description: Le tag, ex. v1.2.0_beta
+        value: ${{ jobs.parse.outputs.tag }}
+      version:
+        description: La version seule, ex. 1.2.0
+        value: ${{ jobs.parse.outputs.version }}
+      channel:
+        description: beta, rc ou release
+        value: ${{ jobs.parse.outputs.channel }}
+      prerelease:
+        description: '"true" sauf pour le canal release'
+        value: ${{ jobs.parse.outputs.prerelease }}
+      debversion:
+        description: Version au format Debian, ex. 1.2.0~beta
+        value: ${{ jobs.parse.outputs.debversion }}
+
+jobs:
+  parse:
+    name: Décoder le tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.parse.outputs.tag }}
+      version: ${{ steps.parse.outputs.version }}
+      channel: ${{ steps.parse.outputs.channel }}
+      prerelease: ${{ steps.parse.outputs.prerelease }}
+      debversion: ${{ steps.parse.outputs.debversion }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: Spatulox/release-kit
+          ref: ${{ inputs.kit-ref }}
+          path: .release-kit
+
+      - id: parse
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          if ! fields="$(bash .release-kit/scripts/parse-tag.sh "$TAG" 2>&1)"; then
+            echo "::error::$fields"
+            exit 1
+          fi
+          echo "$fields" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Release \`$TAG\`"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "$fields" | sed 's/^\([^=]*\)=\(.*\)$/| \1 | `\2` |/'
+          } >> "$GITHUB_STEP_SUMMARY"
