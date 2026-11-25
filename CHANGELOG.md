@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.0
+
+- Tags `vX.Y.Z_alpha` : pré-release, `debversion` `X.Y.Z~alpha` (classée avant `~beta`).
+
 ## v1.0.0
 
 - Workflow réutilisable `tag.yml` : décode les tags `vX.Y.Z[_beta|_rc|_release]`.

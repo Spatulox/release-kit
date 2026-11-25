@@ -2,7 +2,7 @@
 
 Reusable tag-based release system for all my GitHub projects.
 
-Pushing a tag like `v1.2.0_beta` (or `_rc`, `_release`, or `v1.2.0`):
+Pushing a tag like `v1.2.0_beta` (or `_alpha`, `_rc`, `_release`, or `v1.2.0`):
 
 ```
 push tag v* ─► tag      release-kit   decodes the tag (version, channel, pre-release...)
@@ -24,12 +24,13 @@ That's it: `git tag v1.0.0_beta && git push origin v1.0.0_beta`.
 
 | Tag              | `version` | `channel` | `prerelease` | `debversion`  |
 |------------------|-----------|-----------|--------------|---------------|
+| `v1.2.0_alpha`   | `1.2.0`   | `alpha`   | `true`       | `1.2.0~alpha` |
 | `v1.2.0_beta`    | `1.2.0`   | `beta`    | `true`       | `1.2.0~beta`  |
 | `v1.2.0_rc`      | `1.2.0`   | `rc`      | `true`       | `1.2.0~rc`    |
 | `v1.2.0_release` | `1.2.0`   | `release` | `false`      | `1.2.0`       |
 | `v1.2.0`         | `1.2.0`   | `release` | `false`      | `1.2.0`       |
 
-Any other `v*` tag will fail the run before the build. `debversion` uses `~` so that dpkg sorts `1.2.0~beta < 1.2.0~rc < 1.2.0`.
+Any other `v*` tag will fail the run before the build. `debversion` uses `~` so that dpkg sorts `1.2.0~alpha < 1.2.0~beta < 1.2.0~rc < 1.2.0`.
 
 A pre-release is never marked as "latest"; a release is.
 
