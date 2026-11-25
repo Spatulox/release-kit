@@ -33,6 +33,10 @@ check_fails() { # check_fails <nom> <commande...>
 
 # --- parse-tag.sh -----------------------------------------------------------
 
+check "tag alpha" \
+  "tag=v1.2.0_alpha${nl}version=1.2.0${nl}channel=alpha${nl}prerelease=true${nl}debversion=1.2.0~alpha" \
+  "$(bash "$parse" v1.2.0_alpha)"
+
 check "tag beta" \
   "tag=v1.2.0_beta${nl}version=1.2.0${nl}channel=beta${nl}prerelease=true${nl}debversion=1.2.0~beta" \
   "$(bash "$parse" v1.2.0_beta)"
@@ -49,10 +53,22 @@ check "tag sans canal = release" \
   "tag=v1.3.0${nl}version=1.3.0${nl}channel=release${nl}prerelease=false${nl}debversion=1.3.0" \
   "$(bash "$parse" v1.3.0)"
 
-for bad in 1.2.0 v1.2 v1.2.0_alpha v1.2.0-beta v1.2.0_beta2 beta_1.1 "v1.2.0_beta "; do
+for bad in 1.2.0 v1.2 v1.2.0_dev v1.2.0-alpha v1.2.0-beta v1.2.0_beta2 beta_1.1 "v1.2.0_beta "; do
   check_fails "tag invalide '$bad'" bash "$parse" "$bad"
 done
 check_fails "tag absent" bash "$parse"
+
+# Ordre des debversion pour dpkg : alpha < beta < rc < release
+if command -v dpkg >/dev/null; then
+  if dpkg --compare-versions 1.2.0~alpha lt 1.2.0~beta \
+     && dpkg --compare-versions 1.2.0~beta lt 1.2.0~rc \
+     && dpkg --compare-versions 1.2.0~rc lt 1.2.0; then
+    echo "ok   ordre dpkg alpha < beta < rc < release"
+  else
+    echo "FAIL ordre dpkg alpha < beta < rc < release"
+    failures=$((failures + 1))
+  fi
+fi
 
 # --- changelog.sh -----------------------------------------------------------
 

@@ -1,6 +1,6 @@
 name: release-kit / tag
 
-# Décode le tag poussé (vX.Y.Z_beta, vX.Y.Z_rc, vX.Y.Z_release ou vX.Y.Z) et
+# Décode le tag poussé (vX.Y.Z_alpha, vX.Y.Z_beta, vX.Y.Z_rc, vX.Y.Z_release ou vX.Y.Z) et
 # l'expose aux jobs suivants. Un tag invalide fait échouer la release ici,
 # avant tout build.
 
@@ -23,7 +23,7 @@ on:
         description: La version seule, ex. 1.2.0
         value: ${{ jobs.parse.outputs.version }}
       channel:
-        description: beta, rc ou release
+        description: alpha, beta, rc ou release
         value: ${{ jobs.parse.outputs.channel }}
       prerelease:
         description: '"true" sauf pour le canal release'
