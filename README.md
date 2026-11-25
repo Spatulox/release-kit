@@ -1,28 +1,26 @@
 # release-kit
 
-Système de release par tag, réutilisable dans tous mes projets GitHub.
+Reusable tag-based release system for all my GitHub projects.
 
-Pousser un tag `v1.2.0_beta` (ou `_rc`, `_release`, ou `v1.2.0`) :
+Pushing a tag like `v1.2.0_beta` (or `_rc`, `_release`, or `v1.2.0`):
 
 ```
-push tag v* ─► tag      release-kit   décode le tag (version, canal, pré-release…)
-            └► build    le projet     sa propre CI : construit les livrables
-            └► publish  release-kit   release GitHub + notes du CHANGELOG.md
+push tag v* ─► tag      release-kit   decodes the tag (version, channel, pre-release...)
+             └► build    the project  its own CI: builds the deliverables
+             └► publish  release-kit   GitHub release + notes from CHANGELOG.md
 ```
 
-release-kit ne sait rien de la façon dont un projet se construit : il détecte le tag,
-lance la CI du projet, puis publie ce qu'elle a produit.
+release-kit knows nothing about how a project is built: it detects the tag, triggers the project's CI, then publishes what it produced.
 
-## Installation dans un projet
+## Installation in a project
 
-1. Copier [`examples/release.yml`](examples/release.yml) dans `.github/workflows/release.yml`.
-2. Copier [`examples/build.yml`](examples/build.yml) dans `.github/workflows/build.yml` et y
-   mettre le build du projet.
-3. Ajouter un `CHANGELOG.md` avec une section par version (voir plus bas).
+1. Copy [`examples/release.yml`](examples/release.yml) to `.github/workflows/release.yml`.
+2. Copy [`examples/build.yml`](examples/build.yml) to `.github/workflows/build.yml` and add the project's build there.
+3. Add a `CHANGELOG.md` with a section per version (see below).
 
-C'est tout : `git tag v1.0.0_beta && git push origin v1.0.0_beta`.
+That's it: `git tag v1.0.0_beta && git push origin v1.0.0_beta`.
 
-## Les tags
+## Tags
 
 | Tag              | `version` | `channel` | `prerelease` | `debversion`  |
 |------------------|-----------|-----------|--------------|---------------|
@@ -31,76 +29,71 @@ C'est tout : `git tag v1.0.0_beta && git push origin v1.0.0_beta`.
 | `v1.2.0_release` | `1.2.0`   | `release` | `false`      | `1.2.0`       |
 | `v1.2.0`         | `1.2.0`   | `release` | `false`      | `1.2.0`       |
 
-Tout autre tag `v*` fait échouer le run avant le build. `debversion` utilise `~` pour que
-dpkg classe `1.2.0~beta < 1.2.0~rc < 1.2.0`.
+Any other `v*` tag will fail the run before the build. `debversion` uses `~` so that dpkg sorts `1.2.0~beta < 1.2.0~rc < 1.2.0`.
 
-Une pré-release n'est jamais marquée « latest » ; une release l'est.
+A pre-release is never marked as "latest"; a release is.
 
-## Contrat avec la CI du projet (`build.yml`)
+## Contract with the project's CI (`build.yml`)
 
-- `on: workflow_call`, avec les inputs qu'elle utilise parmi `tag`, `version`, `channel`,
-  `debversion` (type `string`). Un input passé par `release.yml` doit être déclaré, sinon
-  GitHub refuse le workflow.
-- Chaque fichier à publier est uploadé (`actions/upload-artifact`) dans un artifact dont le
-  nom commence par `release-` : `release-linux`, `release-windows`… Tous sont fusionnés et
-  joints à la release. Le préfixe se change avec l'input `artifact-pattern` de `publish`.
-- Le `release.yml` du projet doit accorder `permissions: contents: write`.
+- `on: workflow_call`, with the inputs it uses from `tag`, `version`, `channel`, `debversion` (type `string`). An input passed by `release.yml` must be declared, otherwise GitHub rejects the workflow.
+- Each file to be published is uploaded (`actions/upload-artifact`) in an artifact whose name starts with `release-`: `release-linux`, `release-windows`, etc. All are merged and attached to the release. The prefix can be changed with the `artifact-pattern` input in `publish`.
+- The project's `release.yml` must grant `permissions: contents: write`.
 
-## Notes de version
+## Release notes
 
-`publish` publie la section du CHANGELOG correspondant au tag, cherchée dans cet ordre :
+`publish` publishes the section of the CHANGELOG corresponding to the tag, searched in this order:
 
-1. `## v1.2.0_beta` (ou `## [v1.2.0_beta] - 2026-11-12`)
+1. `## v1.2.0_beta` (or `## [v1.2.0_beta] - 2026-11-12`)
 2. `## v1.2.0`
 3. `## 1.2.0`
 
-Section absente ou vide : warning et notes par défaut, ou échec avec `require-changelog: true`.
+Missing or empty section: warning and default notes, or failure with `require-changelog: true`.
 
-Pour prévisualiser en local :
+To preview locally:
 
 ```sh
 bash ../release-kit/scripts/changelog.sh v1.2.0_beta CHANGELOG.md
 ```
 
-## Référence
+## Reference
 
 ### `tag.yml`
 
-| Input     | Défaut                 | |
+| Input     | Default                 | |
 |-----------|------------------------|-|
-| `tag`     | le tag du run          | Tag à décoder |
-| `kit-ref` | `v1`                   | Version de release-kit pour les scripts |
+| `tag`     | the run's tag          | Tag to decode |
+| `kit-ref` | `v1`                   | release-kit version for scripts |
 
-Outputs : `tag`, `version`, `channel`, `prerelease` (`"true"`/`"false"`), `debversion`.
+Outputs: `tag`, `version`, `channel`, `prerelease` (`"true"`/`"false"`), `debversion`.
 
 ### `publish.yml`
 
-| Input               | Défaut                  | |
+| Input               | Default                  | |
 |---------------------|-------------------------|-|
-| `tag`               | requis                  | Tag de la release |
-| `prerelease`        | requis (booléen)        | `${{ needs.tag.outputs.prerelease == 'true' }}` |
-| `title`             | `<nom du repo> <tag>`   | Titre de la release |
-| `artifact-pattern`  | `release-*`             | Artifacts à joindre |
-| `changelog`         | `CHANGELOG.md`          | Chemin du CHANGELOG |
-| `require-changelog` | `false`                 | Échouer sans notes de version |
-| `kit-ref`           | `v1`                    | Version de release-kit pour les scripts |
+| `tag`               | required                | Release tag |
+| `prerelease`        | required (boolean)      | `${{ needs.tag.outputs.prerelease == 'true' }}` |
+| `title`             | `<repo name> <tag>`     | Release title |
+| `artifact-pattern`  | `release-*`             | Artifacts to attach |
+| `changelog`         | `CHANGELOG.md`          | CHANGELOG path |
+| `require-changelog` | `false`                 | Fail without release notes |
+| `kit-ref`           | `v1`                    | release-kit version for scripts |
 
-Relancer le run met à jour une release existante (notes, statut, fichiers écrasés).
+Re-running the workflow updates an existing release (notes, status, overwritten files).
 
 ## Versions
 
-Les projets référencent `@v1`, un tag qui suit la dernière version `v1.x.y`.
-Après une release compatible :
+Projects reference `@v1`, a tag that follows the latest `v1.x.y` version.
+After a compatible release:
 
 ```sh
 git tag v1.1.0 && git tag -f v1 && git push origin v1.1.0 && git push -f origin v1
 ```
 
-Un changement incompatible devient `v2` (et `kit-ref: v2` par défaut).
+A breaking change becomes `v2` (and `kit-ref: v2` by default).
 
-Le repo doit être **public** pour que les workflows d'autres repos puissent l'appeler.
+The repo must be **public** so that workflows from other repos can call it.
 
-## Développement
+## Development
 
 ```sh
 bash tests/run.sh
