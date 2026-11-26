@@ -1,15 +1,15 @@
-# À copier dans <projet>/.github/workflows/release.yml (rien à modifier, sauf le titre).
+# Copy to <project>/.github/workflows/release.yml (nothing to change, except the title).
 #
-# Pousser un tag vX.Y.Z_beta, vX.Y.Z_rc, vX.Y.Z_release (ou vX.Y.Z) :
-#   1. release-kit décode le tag,
-#   2. la CI propre au projet (build.yml) construit les livrables,
-#   3. release-kit crée la release GitHub avec la section du CHANGELOG.md.
+# Push a tag vX.Y.Z_alpha, vX.Y.Z_beta, vX.Y.Z_rc, vX.Y.Z_release (or vX.Y.Z):
+#   1. release-kit decodes the tag,
+#   2. the project's own CI (build.yml) builds the deliverables,
+#   3. release-kit creates the GitHub release with the CHANGELOG.md section.
 name: Release
 
 on:
   push:
     tags: ['v*']
-  # Build à blanc depuis l'onglet Actions : tout est construit, rien n'est publié.
+  # Dry run from the Actions tab: everything is built, nothing is published.
   workflow_dispatch:
 
 permissions:
@@ -19,7 +19,7 @@ jobs:
   tag:
     uses: Spatulox/release-kit/.github/workflows/tag.yml@v1
     # with:
-    #   require-changelog: true   # échoue avant le build sans section dans CHANGELOG.md
+    #   require-changelog: true   # fail before the build without a CHANGELOG.md section
 
   build:
     needs: tag
@@ -37,5 +37,5 @@ jobs:
     with:
       tag: ${{ needs.tag.outputs.tag }}
       prerelease: ${{ needs.tag.outputs.prerelease == 'true' }}
-      # title: MonProjet ${{ needs.tag.outputs.tag }}   # défaut : "<nom du repo> <tag>"
-      # require-changelog: true                         # défaut : simple warning
+      # title: MyProject ${{ needs.tag.outputs.tag }}   # default: "<repo name> <tag>"
+      # require-changelog: true                         # default: just a warning

@@ -1,46 +1,46 @@
 name: release-kit / publish
 
-# Rassemble les artifacts produits par la CI de build du projet, extrait les
-# notes de version du CHANGELOG et crée la release GitHub du tag.
-# Rejouable : si la release existe déjà, ses notes et ses fichiers sont mis à jour.
+# Gathers the artifacts produced by the project's build CI, extracts the
+# release notes from the CHANGELOG and creates the GitHub release for the tag.
+# Re-runnable: if the release already exists, its notes and files are updated.
 #
-# L'appelant doit accorder `permissions: contents: write`.
+# The caller must grant `permissions: contents: write`.
 
 on:
   workflow_call:
     inputs:
       tag:
-        description: Tag de la release (needs.<job tag>.outputs.tag).
+        description: Release tag (needs.<tag job>.outputs.tag).
         type: string
         required: true
       prerelease:
-        description: Publier en pré-release (pas marquée "latest").
+        description: Publish as a pre-release (not marked "latest").
         type: boolean
         required: true
       title:
-        description: Titre de la release. Par défaut "<nom du repo> <tag>".
+        description: Release title. Defaults to "<repo name> <tag>".
         type: string
         default: ""
       artifact-pattern:
-        description: Artifacts à joindre à la release (glob sur leur nom).
+        description: Artifacts to attach to the release (glob on their name).
         type: string
         default: release-*
       changelog:
-        description: Chemin du CHANGELOG dans le repo.
+        description: Path of the CHANGELOG in the repo.
         type: string
         default: CHANGELOG.md
       require-changelog:
-        description: Échouer si le CHANGELOG n'a pas de section pour ce tag (sinon simple warning).
+        description: Fail if the CHANGELOG has no section for this tag (otherwise just a warning).
         type: boolean
         default: false
       kit-ref:
-        description: Version de release-kit dont on utilise les scripts.
+        description: release-kit version whose scripts are used.
         type: string
         default: v1
 
 jobs:
   release:
-    name: Release GitHub
+    name: GitHub release
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -64,32 +64,32 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Fichiers à publier
+      - name: Files to publish
         env:
           PATTERN: ${{ inputs.artifact-pattern }}
         run: |
           if [ -z "$(ls -A dist 2>/dev/null)" ]; then
-            echo "::error::Aucun fichier dans les artifacts '$PATTERN' : la CI de build doit les uploader sous ce nom"
+            echo "::error::No files in the '$PATTERN' artifacts: the build CI must upload them under that name"
             exit 1
           fi
           ls -l dist
 
-      - name: Notes depuis ${{ inputs.changelog }}
+      - name: Notes from ${{ inputs.changelog }}
         run: |
           if ! bash .release-kit/scripts/changelog.sh "$TAG" "$CHANGELOG" > notes.md || [ ! -s notes.md ]; then
             if [ "$REQUIRE_CHANGELOG" = true ]; then
-              echo "::error::Pas de section '## $TAG' dans $CHANGELOG"
+              echo "::error::No '## $TAG' section in $CHANGELOG"
               exit 1
             fi
-            echo "::warning::Pas de section '## $TAG' dans $CHANGELOG"
-            echo "Pas de notes de version pour $TAG." > notes.md
+            echo "::warning::No '## $TAG' section in $CHANGELOG"
+            echo "No release notes for $TAG." > notes.md
           fi
           cat notes.md
 
-      - name: Release GitHub
+      - name: GitHub release
         run: |
           if gh release view "$TAG" > /dev/null 2>&1; then
-            # Relance du workflow : met à jour la release existante
+            # Workflow re-run: update the existing release
             gh release edit "$TAG" --title "$TITLE" --notes-file notes.md --prerelease="$PRERELEASE"
             gh release upload "$TAG" dist/* --clobber
           else

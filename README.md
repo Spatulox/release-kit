@@ -2,6 +2,8 @@
 
 Reusable tag-based release system for all my GitHub projects.
 
+Full documentation: the [wiki](https://github.com/Spatulox/release-kit/wiki).
+
 Pushing a tag like `v1.2.0_beta` (or `_alpha`, `_rc`, `_release`, or `v1.2.0`):
 
 ```

@@ -1,11 +1,11 @@
-# À copier dans <projet>/.github/workflows/build.yml et à remplir : c'est la CI
-# propre au projet, appelée par release.yml une fois le tag décodé.
+# Copy to <project>/.github/workflows/build.yml and fill in: this is the
+# project's own CI, called by release.yml once the tag is decoded.
 #
-# Contrat :
-#   - elle reçoit les inputs ci-dessous (n'en déclarer que ceux utilisés, et
-#     retirer les lignes correspondantes du `with:` de release.yml) ;
-#   - chaque fichier à joindre à la release est uploadé dans un artifact dont
-#     le nom commence par "release-" (release-linux, release-windows, ...).
+# Contract:
+#   - it receives the inputs below (declare only the ones it uses, and remove
+#     the matching lines from the `with:` of release.yml);
+#   - each file to attach to the release is uploaded in an artifact whose
+#     name starts with "release-" (release-linux, release-windows, ...).
 name: Build
 
 on:
@@ -17,7 +17,7 @@ on:
       version:      # 1.2.0
         type: string
         required: true
-      channel:      # beta | rc | release
+      channel:      # alpha | beta | rc | release (dev in a dry run)
         type: string
         required: true
       debversion:   # 1.2.0~beta
@@ -35,7 +35,7 @@ jobs:
       - name: Build
         run: |
           mkdir -p dist
-          echo "Construire ici le projet en version $VERSION" > "dist/mon-projet-$VERSION.txt"
+          echo "Build the project here, version $VERSION" > "dist/my-project-$VERSION.txt"
 
       - uses: actions/upload-artifact@v7
         with:

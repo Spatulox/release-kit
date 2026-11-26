@@ -1,57 +1,57 @@
 name: release-kit / tag
 
-# Décode le tag poussé (vX.Y.Z_alpha, vX.Y.Z_beta, vX.Y.Z_rc, vX.Y.Z_release ou vX.Y.Z) et
-# l'expose aux jobs suivants. Un tag invalide fait échouer la release ici,
-# avant tout build, tout comme un CHANGELOG sans section pour le tag avec
+# Decodes the pushed tag (vX.Y.Z_alpha, vX.Y.Z_beta, vX.Y.Z_rc, vX.Y.Z_release or vX.Y.Z) and
+# exposes it to the next jobs. An invalid tag fails the release here,
+# before any build, and so does a CHANGELOG with no section for the tag when
 # `require-changelog: true`.
 #
-# Build à blanc : un run qui n'est pas un push de tag (workflow_dispatch, pull_request...)
-# et sans input `tag` reçoit une version de dev (v1.2.0_dev.42, debversion
-# 1.2.0+dev.42.gabc1234) et `dry-run` = "true" : le build tourne, la publication est sautée
-# (`if: needs.tag.outputs.dry-run != 'true'` sur le job publish).
+# Dry run: a run that is not a tag push (workflow_dispatch, pull_request...)
+# and gets no `tag` input receives a dev version (v1.2.0_dev.42, debversion
+# 1.2.0+dev.42.gabc1234) and `dry-run` = "true": the build runs, publishing is skipped
+# (`if: needs.tag.outputs.dry-run != 'true'` on the publish job).
 
 on:
   workflow_call:
     inputs:
       tag:
-        description: Tag à décoder. Par défaut, le tag qui a déclenché le run (sinon, build à blanc).
+        description: Tag to decode. Defaults to the tag that triggered the run (otherwise, dry run).
         type: string
         default: ""
       require-changelog:
-        description: Échouer ici, avant le build, si le CHANGELOG n'a pas de section (non vide) pour le tag.
+        description: Fail here, before the build, if the CHANGELOG has no (non-empty) section for the tag.
         type: boolean
         default: false
       changelog:
-        description: Chemin du CHANGELOG dans le repo (avec require-changelog).
+        description: Path of the CHANGELOG in the repo (with require-changelog).
         type: string
         default: CHANGELOG.md
       kit-ref:
-        description: Version de release-kit dont on utilise les scripts.
+        description: release-kit version whose scripts are used.
         type: string
         default: v1
     outputs:
       tag:
-        description: Le tag, ex. v1.2.0_beta
+        description: The tag, e.g. v1.2.0_beta
         value: ${{ jobs.parse.outputs.tag }}
       version:
-        description: La version seule, ex. 1.2.0
+        description: The bare version, e.g. 1.2.0
         value: ${{ jobs.parse.outputs.version }}
       channel:
-        description: alpha, beta, rc ou release (dev en build à blanc)
+        description: alpha, beta, rc or release (dev in a dry run)
         value: ${{ jobs.parse.outputs.channel }}
       prerelease:
-        description: '"true" sauf pour le canal release'
+        description: '"true" except for the release channel'
         value: ${{ jobs.parse.outputs.prerelease }}
       debversion:
-        description: Version au format Debian, ex. 1.2.0~beta
+        description: Debian-style version, e.g. 1.2.0~beta
         value: ${{ jobs.parse.outputs.debversion }}
       dry-run:
-        description: '"true" pour un build à blanc (pas un tag) : ne pas publier'
+        description: '"true" for a dry run (not a tag): do not publish'
         value: ${{ jobs.parse.outputs.dry-run }}
 
 jobs:
   parse:
-    name: Décoder le tag
+    name: Decode the tag
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.parse.outputs.tag }}
@@ -63,8 +63,8 @@ jobs:
     env:
       DRY_RUN: ${{ inputs.tag == '' && github.ref_type != 'tag' }}
     steps:
-      # Le repo du projet d'abord : son checkout nettoierait .release-kit. En build à blanc,
-      # avec l'historique et les tags, pour partir de la dernière version.
+      # The project's repo first: its checkout would wipe .release-kit. In a dry run,
+      # with the history and tags, to start from the latest version.
       - uses: actions/checkout@v7
         if: inputs.require-changelog || env.DRY_RUN == 'true'
         with:
@@ -82,7 +82,7 @@ jobs:
         run: |
           if [ "$DRY_RUN" = true ]; then
             script=(dev-version.sh "$GITHUB_RUN_NUMBER" "$GITHUB_SHA")
-            title="Build à blanc (pas de publication)"
+            title="Dry run (nothing published)"
           else
             script=(parse-tag.sh "$TAG")
             title="Release \`$TAG\`"
@@ -101,14 +101,14 @@ jobs:
             echo "$fields" | sed 's/^\([^=]*\)=\(.*\)$/| \1 | `\2` |/'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Section du CHANGELOG
+      - name: CHANGELOG section
         if: inputs.require-changelog && env.DRY_RUN != 'true'
         env:
           TAG: ${{ steps.parse.outputs.tag }}
           CHANGELOG: ${{ inputs.changelog }}
         run: |
           if ! bash .release-kit/scripts/changelog.sh "$TAG" "$CHANGELOG" > notes.md || [ ! -s notes.md ]; then
-            echo "::error::Pas de section '## $TAG' (ni '## v<version>', ni '## <version>') dans $CHANGELOG : rien n'est construit"
+            echo "::error::No '## $TAG' section (nor '## v<version>', nor '## <version>') in $CHANGELOG: nothing is built"
             exit 1
           fi
           cat notes.md
