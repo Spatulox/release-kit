@@ -4,12 +4,17 @@ name: release-kit / tag
 # l'expose aux jobs suivants. Un tag invalide fait échouer la release ici,
 # avant tout build, tout comme un CHANGELOG sans section pour le tag avec
 # `require-changelog: true`.
+#
+# Build à blanc : un run qui n'est pas un push de tag (workflow_dispatch, pull_request...)
+# et sans input `tag` reçoit une version de dev (v1.2.0_dev.42, debversion
+# 1.2.0+dev.42.gabc1234) et `dry-run` = "true" : le build tourne, la publication est sautée
+# (`if: needs.tag.outputs.dry-run != 'true'` sur le job publish).
 
 on:
   workflow_call:
     inputs:
       tag:
-        description: Tag à décoder. Par défaut, le tag qui a déclenché le run.
+        description: Tag à décoder. Par défaut, le tag qui a déclenché le run (sinon, build à blanc).
         type: string
         default: ""
       require-changelog:
@@ -32,7 +37,7 @@ on:
         description: La version seule, ex. 1.2.0
         value: ${{ jobs.parse.outputs.version }}
       channel:
-        description: alpha, beta, rc ou release
+        description: alpha, beta, rc ou release (dev en build à blanc)
         value: ${{ jobs.parse.outputs.channel }}
       prerelease:
         description: '"true" sauf pour le canal release'
@@ -40,6 +45,9 @@ on:
       debversion:
         description: Version au format Debian, ex. 1.2.0~beta
         value: ${{ jobs.parse.outputs.debversion }}
+      dry-run:
+        description: '"true" pour un build à blanc (pas un tag) : ne pas publier'
+        value: ${{ jobs.parse.outputs.dry-run }}
 
 jobs:
   parse:
@@ -51,10 +59,16 @@ jobs:
       channel: ${{ steps.parse.outputs.channel }}
       prerelease: ${{ steps.parse.outputs.prerelease }}
       debversion: ${{ steps.parse.outputs.debversion }}
+      dry-run: ${{ steps.parse.outputs.dry-run }}
+    env:
+      DRY_RUN: ${{ inputs.tag == '' && github.ref_type != 'tag' }}
     steps:
-      # Le repo du projet d'abord : son checkout nettoierait .release-kit.
+      # Le repo du projet d'abord : son checkout nettoierait .release-kit. En build à blanc,
+      # avec l'historique et les tags, pour partir de la dernière version.
       - uses: actions/checkout@v7
-        if: inputs.require-changelog
+        if: inputs.require-changelog || env.DRY_RUN == 'true'
+        with:
+          fetch-depth: ${{ env.DRY_RUN == 'true' && '0' || '1' }}
 
       - uses: actions/checkout@v7
         with:
@@ -66,13 +80,21 @@ jobs:
         env:
           TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          if ! fields="$(bash .release-kit/scripts/parse-tag.sh "$TAG" 2>&1)"; then
+          if [ "$DRY_RUN" = true ]; then
+            script=(dev-version.sh "$GITHUB_RUN_NUMBER" "$GITHUB_SHA")
+            title="Build à blanc (pas de publication)"
+          else
+            script=(parse-tag.sh "$TAG")
+            title="Release \`$TAG\`"
+          fi
+          if ! fields="$(bash ".release-kit/scripts/${script[0]}" "${script[@]:1}" 2>&1)"; then
             echo "::error::$fields"
             exit 1
           fi
+          fields+=$'\n'"dry-run=$DRY_RUN"
           echo "$fields" >> "$GITHUB_OUTPUT"
           {
-            echo "### Release \`$TAG\`"
+            echo "### $title"
             echo
             echo "| | |"
             echo "|---|---|"
@@ -80,7 +102,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Section du CHANGELOG
-        if: inputs.require-changelog
+        if: inputs.require-changelog && env.DRY_RUN != 'true'
         env:
           TAG: ${{ steps.parse.outputs.tag }}
           CHANGELOG: ${{ inputs.changelog }}

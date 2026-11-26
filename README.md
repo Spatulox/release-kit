@@ -40,6 +40,30 @@ A pre-release is never marked as "latest"; a release is.
 - Each file to be published is uploaded (`actions/upload-artifact`) in an artifact whose name starts with `release-`: `release-linux`, `release-windows`, etc. All are merged and attached to the release. The prefix can be changed with the `artifact-pattern` input in `publish`.
 - The project's `release.yml` must grant `permissions: contents: write`.
 
+## Dry run
+
+A run that is not a tag push (`workflow_dispatch`, `pull_request`...) and gets no `tag` input
+is a dry run: `tag` builds a development version from the latest `vX.Y.Z[_channel]` tag
+reachable from the commit (`0.0.0` if none), the project's CI builds everything, and nothing
+is published.
+
+| Output       | Value                       |
+|--------------|-----------------------------|
+| `tag`        | `v1.2.0_dev.42` (run number) |
+| `version`    | `1.2.0`                     |
+| `channel`    | `dev`                       |
+| `prerelease` | `true`                      |
+| `debversion` | `1.2.0+dev.42.gabc1234` (sorts after `1.2.0`, valid for deb, rpm and snap) |
+| `dry-run`    | `true`                      |
+
+The example `release.yml` has a `workflow_dispatch` trigger (a "Run workflow" button in the
+Actions tab) and skips `publish` with `if: needs.tag.outputs.dry-run != 'true'`. Without that
+`if`, `publish` fails on the missing tag instead of publishing anything.
+
+```sh
+bash ../release-kit/scripts/dev-version.sh 42 "$(git rev-parse HEAD)"   # preview
+```
+
 ## Release notes
 
 `publish` publishes the section of the CHANGELOG corresponding to the tag, searched in this order:
@@ -68,7 +92,7 @@ bash ../release-kit/scripts/changelog.sh v1.2.0_beta CHANGELOG.md
 | `changelog`         | `CHANGELOG.md` | CHANGELOG path (with `require-changelog`) |
 | `kit-ref`           | `v1`           | release-kit version for scripts |
 
-Outputs: `tag`, `version`, `channel`, `prerelease` (`"true"`/`"false"`), `debversion`.
+Outputs: `tag`, `version`, `channel`, `prerelease` (`"true"`/`"false"`), `debversion`, `dry-run` (`"true"`/`"false"`).
 
 ### `publish.yml`
 
