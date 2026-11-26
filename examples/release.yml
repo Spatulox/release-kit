@@ -16,6 +16,8 @@ permissions:
 jobs:
   tag:
     uses: Spatulox/release-kit/.github/workflows/tag.yml@v1
+    # with:
+    #   require-changelog: true   # échoue avant le build sans section dans CHANGELOG.md
 
   build:
     needs: tag

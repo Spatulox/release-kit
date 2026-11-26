@@ -2,7 +2,8 @@ name: release-kit / tag
 
 # Décode le tag poussé (vX.Y.Z_alpha, vX.Y.Z_beta, vX.Y.Z_rc, vX.Y.Z_release ou vX.Y.Z) et
 # l'expose aux jobs suivants. Un tag invalide fait échouer la release ici,
-# avant tout build.
+# avant tout build, tout comme un CHANGELOG sans section pour le tag avec
+# `require-changelog: true`.
 
 on:
   workflow_call:
@@ -11,6 +12,14 @@ on:
         description: Tag à décoder. Par défaut, le tag qui a déclenché le run.
         type: string
         default: ""
+      require-changelog:
+        description: Échouer ici, avant le build, si le CHANGELOG n'a pas de section (non vide) pour le tag.
+        type: boolean
+        default: false
+      changelog:
+        description: Chemin du CHANGELOG dans le repo (avec require-changelog).
+        type: string
+        default: CHANGELOG.md
       kit-ref:
         description: Version de release-kit dont on utilise les scripts.
         type: string
@@ -43,6 +52,10 @@ jobs:
       prerelease: ${{ steps.parse.outputs.prerelease }}
       debversion: ${{ steps.parse.outputs.debversion }}
     steps:
+      # Le repo du projet d'abord : son checkout nettoierait .release-kit.
+      - uses: actions/checkout@v7
+        if: inputs.require-changelog
+
       - uses: actions/checkout@v7
         with:
           repository: Spatulox/release-kit
@@ -65,3 +78,15 @@ jobs:
             echo "|---|---|"
             echo "$fields" | sed 's/^\([^=]*\)=\(.*\)$/| \1 | `\2` |/'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Section du CHANGELOG
+        if: inputs.require-changelog
+        env:
+          TAG: ${{ steps.parse.outputs.tag }}
+          CHANGELOG: ${{ inputs.changelog }}
+        run: |
+          if ! bash .release-kit/scripts/changelog.sh "$TAG" "$CHANGELOG" > notes.md || [ ! -s notes.md ]; then
+            echo "::error::Pas de section '## $TAG' (ni '## v<version>', ni '## <version>') dans $CHANGELOG : rien n'est construit"
+            exit 1
+          fi
+          cat notes.md

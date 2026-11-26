@@ -49,6 +49,7 @@ A pre-release is never marked as "latest"; a release is.
 3. `## 1.2.0`
 
 Missing or empty section: warning and default notes, or failure with `require-changelog: true`.
+Pass `require-changelog: true` to `tag` as well to fail at once, before anything is built.
 
 To preview locally:
 
@@ -60,10 +61,12 @@ bash ../release-kit/scripts/changelog.sh v1.2.0_beta CHANGELOG.md
 
 ### `tag.yml`
 
-| Input     | Default                 | |
-|-----------|------------------------|-|
-| `tag`     | the run's tag          | Tag to decode |
-| `kit-ref` | `v1`                   | release-kit version for scripts |
+| Input               | Default        | |
+|---------------------|----------------|-|
+| `tag`               | the run's tag  | Tag to decode |
+| `require-changelog` | `false`        | Fail before the build if `CHANGELOG.md` has no section for the tag |
+| `changelog`         | `CHANGELOG.md` | CHANGELOG path (with `require-changelog`) |
+| `kit-ref`           | `v1`           | release-kit version for scripts |
 
 Outputs: `tag`, `version`, `channel`, `prerelease` (`"true"`/`"false"`), `debversion`.
 

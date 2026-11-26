@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.2.0
+
+- `tag.yml` : inputs `require-changelog` et `changelog`, pour échouer avant le build quand le
+  CHANGELOG n'a pas de section pour le tag.
+
 ## v1.1.0
 
 - Tags `vX.Y.Z_alpha` : pré-release, `debversion` `X.Y.Z~alpha` (classée avant `~beta`).
