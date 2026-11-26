@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Affiche la section de CHANGELOG.md correspondant à un tag.
+# Prints the CHANGELOG.md section matching a tag.
 #
 #   changelog.sh <tag> [CHANGELOG.md]
 #
-# Cherche un titre "## <tag>" (ex. "## v1.2.0_beta", "## [v1.2.0_beta] - 2026-11-12"),
-# puis, à défaut, "## v1.2.0" ou "## 1.2.0". Renvoie le code 1 si rien n'est trouvé.
+# Looks for a "## <tag>" heading (e.g. "## v1.2.0_beta", "## [v1.2.0_beta] - 2026-11-12"),
+# then, failing that, "## v1.2.0" or "## 1.2.0". Exits with code 1 if nothing is found.
 set -euo pipefail
 
 tag="${1:?usage: changelog.sh <tag> [CHANGELOG.md]}"
 file="${2:-CHANGELOG.md}"
 
-[ -f "$file" ] || { echo "Fichier introuvable : $file" >&2; exit 1; }
+[ -f "$file" ] || { echo "File not found: $file" >&2; exit 1; }
 
 extract() {
   awk -v want="$1" '
@@ -40,5 +40,5 @@ for key in "$tag" "v$version" "$version"; do
   fi
 done
 
-echo "Pas d'entrée CHANGELOG pour $tag" >&2
+echo "No CHANGELOG entry for $tag" >&2
 exit 1

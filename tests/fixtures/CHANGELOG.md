@@ -2,19 +2,19 @@
 
 ## [v2.0.0_rc] - 2026-11-12
 
-- Section entre crochets avec une date.
+- Bracketed section with a date.
 
 ## v1.2.0_beta
 
-### Nouveautés
-- Exacte pour le tag beta.
+### New
+- Exact match for the beta tag.
 
 ## v1.1.0
 
-- Section commune à tous les canaux de 1.1.0.
+- Section shared by all 1.1.0 channels.
 
 ## 1.0.0
 
-- Titre sans "v".
+- Heading without "v".
 
 ## v0.9.0
